@@ -2,6 +2,7 @@
 
 //import { setTimeout } from "node:timers/promises";
 const setTimeout = require("timers/promises").setTimeout;
+const dayjs = require("dayjs");
 
 exports.dynamoLock = async function (
   dynamodbDocumentClient,
@@ -12,32 +13,37 @@ exports.dynamoLock = async function (
   const lock = {
     PK: lockId,
     SK: lockId,
+    Expiry: dayjs().add(30, "seconds").toISOString(),
     Type: "Lock",
   };
 
-  const params = {
-    TableName: tableName,
-    Item: lock,
-    ConditionExpression: "attribute_not_exists(PK)",
-  };
+  let unlock = false;
+  while (!unlock) {
+    try {
+      const params = {
+        TableName: tableName,
+        Item: lock,
+        ConditionExpression: "attribute_not_exists(PK) OR Expiry < :now",
+        ExpressionAttributeValues: {
+          ":now": dayjs().toISOString(),
+        },
+      };
 
-  let unlock = async () => {
-    await dynamoUnlock(dynamodbDocumentClient, tableName, resource);
-  };
-
-  try {
-    await dynamodbDocumentClient.send(new PutCommand(params));
-    console.log("Lock acquired");
-    return unlock;
-  } catch (err) {
-    if (err.name === "ConditionalCheckFailedException") {
-      console.log("Lock already acquired");
-      await setTimeout(200);
-      return await exports.dynamoLock(dynamodbDocumentClient, tableName, pk);
-    } else {
-      throw err;
+      await dynamodbDocumentClient.send(new global.PutCommand(params));
+      console.log("Lock acquired");
+      unlock = async () => {
+        await dynamoUnlock(dynamodbDocumentClient, tableName, resource);
+      };
+    } catch (err) {
+      if (err.name === "ConditionalCheckFailedException") {
+        console.log("Lock already acquired");
+        await setTimeout(500);
+      } else {
+        throw err;
+      }
     }
   }
+  return unlock;
 };
 
 async function dynamoUnlock(dynamodbDocumentClient, tableName, pk) {
@@ -51,7 +57,7 @@ async function dynamoUnlock(dynamodbDocumentClient, tableName, pk) {
   };
 
   try {
-    await dynamodbDocumentClient.send(new DeleteCommand(params));
+    await dynamodbDocumentClient.send(new global.DeleteCommand(params));
     console.log("Lock released");
   } catch (err) {
     console.log("Lock not released");

@@ -15,6 +15,7 @@ const DynamoDBDocumentClient =
 const GetCommand = require("@aws-sdk/lib-dynamodb").GetCommand;
 global.QueryCommand = require("@aws-sdk/lib-dynamodb").QueryCommand;
 global.PutCommand = require("@aws-sdk/lib-dynamodb").PutCommand;
+global.DeleteCommand = require("@aws-sdk/lib-dynamodb").DeleteCommand;
 
 const client = new DynamoDBClient({});
 global.docClient = DynamoDBDocumentClient.from(client);
@@ -97,6 +98,15 @@ app.use(function (err, req, res, next) {
   } else {
     next(err);
   }
+});
+
+// default error handler
+app.use(function (err, req, res, next) {
+  console.error(err.stack);
+  res.status(500).json({
+    code: "api-999",
+    message: "Internal Server Error",
+  });
 });
 
 app.listen(port, () => {

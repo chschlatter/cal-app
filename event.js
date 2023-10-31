@@ -62,7 +62,8 @@ exports.create = async function (req, res) {
   event.id = uuidv4();
   console.log("event: " + JSON.stringify(event));
 
-  const unlock = await dynamoLock(global.docClient, "cal_data", "ALL");
+  // lock cal_data table
+  const unlock = await dynamoLock(global.docClient, "cal_data", "cal_data");
 
   try {
     // check if event overlaps with another
@@ -83,6 +84,7 @@ exports.create = async function (req, res) {
     console.log(data);
     res.send(event);
   } finally {
+    // unlock cal_data table
     await unlock();
   }
 };
