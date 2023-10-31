@@ -16,50 +16,14 @@ const GetCommand = require("@aws-sdk/lib-dynamodb").GetCommand;
 global.QueryCommand = require("@aws-sdk/lib-dynamodb").QueryCommand;
 global.PutCommand = require("@aws-sdk/lib-dynamodb").PutCommand;
 global.DeleteCommand = require("@aws-sdk/lib-dynamodb").DeleteCommand;
+global.UpdateCommand = require("@aws-sdk/lib-dynamodb").UpdateCommand;
 
 const client = new DynamoDBClient({});
 global.docClient = DynamoDBDocumentClient.from(client);
 
 global.httpStatus = require("http-status");
 
-const {
-  body,
-  checkSchema,
-  validationResult,
-  matchedData,
-} = require("express-validator");
-global.validationResult = validationResult;
-global.matchedData = matchedData;
-
-const eventSchema = {
-  title: {
-    in: ["body"],
-    isString: true,
-    notEmpty: true,
-    escape: true,
-    errorMessage: "Title is required",
-  },
-  start: {
-    in: ["body"],
-    isDate: {
-      options: {
-        format: "YYYY-MM-DD",
-      },
-      errorMessage: "Wrong date format",
-    },
-    errorMessage: "Start date is required",
-  },
-  end: {
-    in: ["body"],
-    isDate: {
-      options: {
-        format: "YYYY-MM-DD",
-      },
-      errorMessage: "Wrong date format",
-    },
-    errorMessage: "End date is required",
-  },
-};
+const validator = require("./validator");
 
 class ApiError extends Error {
   constructor(status, code, msg, data) {
@@ -89,7 +53,7 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/events", event.list);
-app.post("/api/events", checkSchema(eventSchema), event.create);
+app.post("/api/events", validator.eventCreate, event.create);
 
 // error handler for ApiError
 app.use(function (err, req, res, next) {

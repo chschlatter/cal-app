@@ -3,7 +3,8 @@
 const e = require("express");
 require("express-async-errors");
 const { v4: uuidv4 } = require("uuid");
-const dayjs = require("dayjs");
+
+const { validationResult, matchedData } = require("express-validator");
 
 const dynamoLock = require("./dynamo-lock").dynamoLock;
 
@@ -48,7 +49,7 @@ exports.list = async function (req, res) {
 exports.create = async function (req, res) {
   console.log("create: " + JSON.stringify(req.body));
 
-  const errors = global.validationResult(req);
+  const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw new global.ApiError(
       global.httpStatus.BAD_REQUEST,
@@ -58,7 +59,7 @@ exports.create = async function (req, res) {
     );
   }
 
-  const event = global.matchedData(req);
+  const event = matchedData(req);
   event.id = uuidv4();
   console.log("event: " + JSON.stringify(event));
 
