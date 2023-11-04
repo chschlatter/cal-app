@@ -1,6 +1,29 @@
 var calendar;
+var username, role;
 
-$(document).ready(function () {
+$(document).ready(() => {
+  $.ajax({
+    url: "/api/auth",
+    contentType: "application/json; charset=utf-8",
+    dataType: "json",
+    type: "get",
+    success: (user) => {
+      console.log("user: " + JSON.stringify(user));
+      username = user.name;
+      $("#username").text(username);
+      role = user.role;
+      $("html").css("visibility", "visible");
+    },
+    error: (xhr) => {
+      if (xhr.status == 401) {
+        window.location.href = "/login";
+      } else {
+        console.log("error: " + xhr.responseText);
+        alert("Error: " + xhr.responseText);
+      }
+    },
+  });
+
   const calendarEl = document.getElementById("calendar");
   calendar = new FullCalendar.Calendar(calendarEl, {
     themeSystem: "bootstrap5",
@@ -127,15 +150,12 @@ function save_event(e) {
   const event = Object.fromEntries(form_data);
   event.end = dayjs(event.end).add(1, "day").format("YYYY-MM-DD");
 
-  /*
-  if (SERVER_VARS.username == "admin") {
+  if (role == "admin") {
     event.title = event.username;
     delete event.username;
   } else {
-    event.title = SERVER_VARS.username;
+    event.title = username;
   }
-  */
-  event.title = "test";
 
   console.log("save_event (from modal form): " + JSON.stringify(event));
 

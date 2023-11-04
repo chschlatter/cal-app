@@ -1,135 +1,35 @@
 "use strict";
 
-const e = require("express");
-require("express-async-errors");
-const { v4: uuidv4 } = require("uuid");
+const Events = require("./models/events");
+const ApiError = require("./ApiError");
 
-const { validationResult, matchedData } = require("express-validator");
+const { matchedData } = require("express-validator");
 
 const dynamoLock = require("./dynamo-lock").dynamoLock;
 
 exports.list = async function (req, res) {
-  if (!req.query.start || !req.query.end) {
-    res.send("Please provide start and end query params");
-    return;
-  }
-  console.log("start: " + req.query.start + ", end: " + req.query.end);
+  console.log("list: " + JSON.stringify(req.query));
 
-  const params = {
-    TableName: "cal_data",
-    IndexName: "Type-EndDate-index",
-    KeyConditionExpression: "#Type = :type AND EndDate >= :start",
-    FilterExpression: "StartDate <= :end",
-    ExpressionAttributeValues: {
-      ":type": "Event",
-      ":start": req.query.start,
-      ":end": req.query.end,
-    },
-    ExpressionAttributeNames: {
-      "#Type": "Type",
-    },
-  };
-
-  try {
-    const data = await global.docClient.send(new global.QueryCommand(params));
-    const events = data.Items.map((item) => {
-      return {
-        id: item.PK,
-        title: item.SK,
-        start: item.StartDate,
-        end: item.EndDate,
-      };
-    });
-    res.send(events);
-  } catch (err) {
-    console.log(err);
-  }
+  const eventList = matchedData(req);
+  const events = new Events(global.docClient);
+  const data = await events.list(eventList.start, eventList.end);
+  res.send(data);
 };
 
 exports.create = async function (req, res) {
   console.log("create: " + JSON.stringify(req.body));
 
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    throw new global.ApiError(
-      global.httpStatus.BAD_REQUEST,
-      "api-030",
-      "Validation error",
-      errors.array()
-    );
-  }
-
+  // authorization
   const event = matchedData(req);
-  event.id = uuidv4();
-  console.log("event: " + JSON.stringify(event));
-
-  // lock cal_data table
-  const unlock = await dynamoLock(global.docClient, "cal_data", "cal_data");
-
-  try {
-    // check if event overlaps with another
-    await checkOverlaps(event);
-
-    const params = {
-      TableName: "cal_data",
-      Item: {
-        PK: "Event#" + event.id,
-        SK: event.title,
-        Type: "Event",
-        StartDate: event.start,
-        EndDate: event.end,
-      },
-    };
-
-    const data = await global.docClient.send(new global.PutCommand(params));
-    console.log(data);
-    res.send(event);
-  } finally {
-    // unlock cal_data table
-    await unlock();
-  }
-};
-
-async function checkOverlaps(event) {
-  const params = {
-    TableName: "cal_data",
-    IndexName: "Type-EndDate-index",
-    KeyConditionExpression: "#Type = :type AND EndDate > :start",
-    FilterExpression: "StartDate < :end",
-    ExpressionAttributeValues: {
-      ":type": "Event",
-      //":start": dayjs(event.start).subtract(1, "day").format("YYYY-MM-DD"),
-      ":start": event.start,
-      ":end": event.end,
-    },
-    ExpressionAttributeNames: {
-      "#Type": "Type",
-    },
-  };
-
-  const data = await global.docClient.send(new global.QueryCommand(params));
-
-  // throw ApiError
-  if (data.Count > 0) {
-    let errorData = {
-      overlap_start: false,
-      overlap_end: false,
-    };
-
-    data.Items.forEach((item) => {
-      if (event.start >= item.StartDate) {
-        errorData.overlap_start = true;
-      }
-      if (event.end <= item.EndDate) {
-        errorData.overlap_end = true;
-      }
-    });
-
-    throw new global.ApiError(
-      global.httpStatus.CONFLICT,
-      "event-010",
-      "Event overlaps with another",
-      errorData
+  if (event.title !== req.user.name) {
+    throw new ApiError(
+      global.httpStatus.FORBIDDEN,
+      "api-020",
+      "Not authorized"
     );
   }
-}
+
+  const events = new Events(global.docClient);
+  await events.create(event);
+  res.send(event);
+};

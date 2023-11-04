@@ -3,6 +3,7 @@
 //import { setTimeout } from "node:timers/promises";
 const setTimeout = require("timers/promises").setTimeout;
 const dayjs = require("dayjs");
+const { PutCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 
 exports.dynamoLock = async function (
   dynamodbDocumentClient,
@@ -29,7 +30,7 @@ exports.dynamoLock = async function (
         },
       };
 
-      await dynamodbDocumentClient.send(new global.PutCommand(params));
+      await dynamodbDocumentClient.send(new PutCommand(params));
       console.log("Lock acquired");
       unlock = async () => {
         await dynamoUnlock(dynamodbDocumentClient, tableName, resource);
@@ -57,7 +58,7 @@ async function dynamoUnlock(dynamodbDocumentClient, tableName, pk) {
   };
 
   try {
-    await dynamodbDocumentClient.send(new global.DeleteCommand(params));
+    await dynamodbDocumentClient.send(new DeleteCommand(params));
     console.log("Lock released");
   } catch (err) {
     console.log("Lock not released");

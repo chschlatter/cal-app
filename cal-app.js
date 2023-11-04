@@ -3,57 +3,70 @@
 require("dotenv").config();
 
 const path = require("path");
-const bodyParser = require("body-parser");
+
+const cookieParser = require("cookie-parser");
 
 const express = require("express");
+require("express-async-errors");
 const app = express();
 const port = 3000;
 
 const DynamoDBClient = require("@aws-sdk/client-dynamodb").DynamoDBClient;
 const DynamoDBDocumentClient =
   require("@aws-sdk/lib-dynamodb").DynamoDBDocumentClient;
-const GetCommand = require("@aws-sdk/lib-dynamodb").GetCommand;
-global.QueryCommand = require("@aws-sdk/lib-dynamodb").QueryCommand;
-global.PutCommand = require("@aws-sdk/lib-dynamodb").PutCommand;
-global.DeleteCommand = require("@aws-sdk/lib-dynamodb").DeleteCommand;
-global.UpdateCommand = require("@aws-sdk/lib-dynamodb").UpdateCommand;
 
 const client = new DynamoDBClient({});
 global.docClient = DynamoDBDocumentClient.from(client);
 
 global.httpStatus = require("http-status");
 
+const ApiError = require("./ApiError");
 const validator = require("./validator");
 
-class ApiError extends Error {
-  constructor(status, code, msg, data) {
-    super(msg);
-    this.status = status;
-    this.code = code;
-    this.data = data;
-  }
-
-  toJSON() {
-    return {
-      code: this.code,
-      message: this.message,
-      data: this.data,
-    };
-  }
-}
-global.ApiError = ApiError;
-
 const event = require("./event");
+const user = require("./user");
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+
+const authorize = require("./auth").authorization;
+app.use(cookieParser());
+// app.use("/api/*", authorize);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.get("/api/events", event.list);
-app.post("/api/events", validator.eventCreate, event.create);
+app.get("/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "login.html"));
+});
+
+app.get(
+  "/api/events",
+  authorize,
+  validator.listEvents,
+  validator.checkValidationResult,
+  event.list
+);
+app.post(
+  "/api/events",
+  authorize,
+  validator.eventCreate,
+  validator.checkValidationResult,
+  event.create
+);
+
+app.post(
+  "/api/users/login",
+  validator.userLogin,
+  validator.checkValidationResult,
+  user.login
+);
+
+app.get("/api/auth", authorize, (req, res) => {
+  console.log(req.user);
+  res.json(req.user);
+});
 
 // error handler for ApiError
 app.use(function (err, req, res, next) {
