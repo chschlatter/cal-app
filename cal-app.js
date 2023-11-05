@@ -31,7 +31,10 @@ app.use(express.static(path.join(__dirname, "public")));
 
 const authorize = require("./auth").authorization;
 app.use(cookieParser());
-// app.use("/api/*", authorize);
+app.use(
+  "/api/*",
+  authorize.unless({ path: ["/api/users/login", "/api/users"] })
+);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
@@ -43,14 +46,12 @@ app.get("/login", (req, res) => {
 
 app.get(
   "/api/events",
-  authorize,
   validator.listEvents,
   validator.checkValidationResult,
   event.list
 );
 app.post(
   "/api/events",
-  authorize,
   validator.eventCreate,
   validator.checkValidationResult,
   event.create
@@ -61,6 +62,13 @@ app.post(
   validator.userLogin,
   validator.checkValidationResult,
   user.login
+);
+
+app.post(
+  "/api/users",
+  validator.createUser,
+  validator.checkValidationResult,
+  user.create
 );
 
 app.get("/api/auth", authorize, (req, res) => {

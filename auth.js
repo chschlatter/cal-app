@@ -1,9 +1,10 @@
 "use strict";
 
+const { unless } = require("express-unless");
 const jwt = require("jsonwebtoken");
 const ApiError = require("./ApiError");
 
-exports.authorization = async (req, res, next) => {
+exports.authorization = (req, res, next) => {
   const token = req.cookies.access_token;
   if (!token) {
     const error = new ApiError(
@@ -30,3 +31,5 @@ exports.authorization = async (req, res, next) => {
     );
   }
 };
+
+exports.authorization.unless = unless;

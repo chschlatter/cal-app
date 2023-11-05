@@ -150,12 +150,15 @@ function save_event(e) {
   const event = Object.fromEntries(form_data);
   event.end = dayjs(event.end).add(1, "day").format("YYYY-MM-DD");
 
+  /*
   if (role == "admin") {
     event.title = event.username;
     delete event.username;
   } else {
     event.title = username;
   }
+  */
+  event.title = username;
 
   console.log("save_event (from modal form): " + JSON.stringify(event));
 

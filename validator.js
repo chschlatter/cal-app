@@ -2,6 +2,7 @@
 
 const { checkSchema, validationResult } = require("express-validator");
 const ApiError = require("./ApiError");
+const e = require("express");
 
 const eventSchema = {
   title: {
@@ -62,6 +63,31 @@ const userLoginSchema = {
   },
 };
 
+const createUserSchema = {
+  name: {
+    in: ["body"],
+    isString: true,
+    notEmpty: true,
+    escape: true,
+    errorMessage: "Name is required",
+  },
+  password: {
+    in: ["body"],
+    optional: true,
+    isString: true,
+    notEmpty: true,
+    escape: true,
+    errorMessage: "Password not valid",
+  },
+  role: {
+    in: ["body"],
+    isString: true,
+    notEmpty: true,
+    escape: true,
+    errorMessage: "Role is required",
+  },
+};
+
 exports.checkValidationResult = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -78,3 +104,4 @@ exports.checkValidationResult = async (req, res, next) => {
 exports.listEvents = checkSchema(listEventsSchema);
 exports.eventCreate = checkSchema(eventSchema);
 exports.userLogin = checkSchema(userLoginSchema);
+exports.createUser = checkSchema(createUserSchema);

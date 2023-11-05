@@ -1,9 +1,10 @@
 "use strict";
 
-const Events = require("./models/events");
+const events = require("./models/events");
 const ApiError = require("./ApiError");
 
 const { matchedData } = require("express-validator");
+const e = require("express");
 
 const dynamoLock = require("./dynamo-lock").dynamoLock;
 
@@ -11,8 +12,11 @@ exports.list = async function (req, res) {
   console.log("list: " + JSON.stringify(req.query));
 
   const eventList = matchedData(req);
-  const events = new Events(global.docClient);
-  const data = await events.list(eventList.start, eventList.end);
+  const data = await events.list(
+    eventList.start,
+    eventList.end,
+    global.docClient
+  );
   res.send(data);
 };
 
@@ -29,7 +33,6 @@ exports.create = async function (req, res) {
     );
   }
 
-  const events = new Events(global.docClient);
-  await events.create(event);
+  await events.create(event, global.docClient);
   res.send(event);
 };
