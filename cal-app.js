@@ -23,55 +23,43 @@ global.httpStatus = require("http-status");
 const ApiError = require("./ApiError");
 const validator = require("./validator");
 
+const auth = require("./auth");
+
 const event = require("./event");
 const user = require("./user");
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const authorize = require("./auth").authorization;
 app.use(cookieParser());
-app.use(
-  "/api/*",
-  authorize.unless({ path: ["/api/users/login", "/api/users"] })
-);
+app.use("/api/*", auth.authorization.unless({ path: ["/api/users/login"] }));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
-
 app.get("/login", (req, res) => {
   res.sendFile(path.join(__dirname, "login.html"));
 });
 
-app.get(
-  "/api/events",
-  validator.listEvents,
-  validator.checkValidationResult,
-  event.list
-);
-app.post(
-  "/api/events",
-  validator.eventCreate,
-  validator.checkValidationResult,
-  event.create
-);
-
-app.post(
-  "/api/users/login",
-  validator.userLogin,
-  validator.checkValidationResult,
-  user.login
-);
-
+app.get("/api/events", validator.validate("listEvents"), event.list);
+app.post("/api/events", validator.validate("createEvent"), event.create);
+app.delete("/api/events/:id", validator.validate("deleteEvent"), event.delete);
+app.post("/api/users/login", validator.validate("userLogin"), user.login);
+app.get("/api/users", auth.needsRole("admin"), user.list);
 app.post(
   "/api/users",
-  validator.createUser,
-  validator.checkValidationResult,
+  auth.needsRole("admin"),
+  validator.validate("createUser"),
   user.create
 );
+app.delete(
+  "/api/users/:name",
+  auth.needsRole("admin"),
+  validator.validate("deleteUser"),
+  user.delete
+);
 
-app.get("/api/auth", authorize, (req, res) => {
+app.get("/api/auth", (req, res) => {
   console.log(req.user);
   res.json(req.user);
 });

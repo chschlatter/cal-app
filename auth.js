@@ -31,5 +31,17 @@ exports.authorization = (req, res, next) => {
     );
   }
 };
-
 exports.authorization.unless = unless;
+
+exports.needsRole = (role) => {
+  return (req, res, next) => {
+    if (req.user.role !== role) {
+      throw new ApiError(
+        global.httpStatus.FORBIDDEN,
+        "api-020",
+        "Not authorized"
+      );
+    }
+    next();
+  };
+};

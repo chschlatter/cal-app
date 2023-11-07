@@ -53,17 +53,22 @@ exports.login = async function (req, res) {
 };
 
 exports.create = async function (req, res) {
-  // authorization
-  if (req.user.role !== "admin") {
-    throw new ApiError(
-      global.httpStatus.FORBIDDEN,
-      "api-020",
-      "Not authorized"
-    );
-  }
-
   const user = matchedData(req);
   await Users.create(user, global.docClient);
+  res.json({
+    name: user.name,
+    role: user.role,
+  });
+};
+
+exports.list = async function (req, res) {
+  const data = await Users.list(global.docClient);
+  res.send(data);
+};
+
+exports.delete = async function (req, res) {
+  const user = matchedData(req);
+  await Users.remove(user, global.docClient);
   res.json({
     name: user.name,
     role: user.role,

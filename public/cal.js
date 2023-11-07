@@ -13,6 +13,11 @@ $(document).ready(() => {
       $("#username").text(username);
       role = user.role;
       $("html").css("visibility", "visible");
+
+      if (role == "admin") {
+        update_username_dropdown();
+        $("#row-select-username").removeClass("d-none");
+      }
     },
     error: (xhr) => {
       if (xhr.status == 401) {
@@ -44,12 +49,6 @@ $(document).ready(() => {
     $("#error-msg").text("");
   });
 
-  /*
-  if (SERVER_VARS.username == 'admin') {
-    $('#row-select-username').removeClass('d-none');
-  }
-  */
-
   calendar.render();
 
   /*
@@ -68,25 +67,15 @@ function cal_on_select(info) {
     .subtract(1, "day")
     .format("YYYY-MM-DD");
   $("#input-end-date").val(end_date_str);
-
-  /*
-  if (SERVER_VARS.username == "admin") {
-    update_username_dropdown();
-  }
-  */
-
   $("#event-modal").modal("show");
 }
 
 function cal_on_eventClick(info) {
   const event = info.event;
 
-  if (SERVER_VARS.username != "admin" && event.title != SERVER_VARS.username) {
+  // only admin can edit other users' events
+  if (role != "admin" && event.title != username) {
     return;
-  }
-
-  if (SERVER_VARS.username == "admin") {
-    update_username_dropdown();
   }
 
   const end_date_exclusive = dayjs(event.end);
@@ -135,9 +124,14 @@ function update_username_dropdown() {
 
     $("#select-username").empty();
     for (var i = 0; i < response.length; i++) {
+      let selected = "false";
+      if (response[i].name == username) {
+        selected = "true";
+      }
       jQuery("<option/>", {
-        value: response[i],
-        html: response[i],
+        value: response[i].name,
+        html: response[i].name,
+        selected: selected,
       }).appendTo("#select-username");
     }
   });
@@ -150,15 +144,12 @@ function save_event(e) {
   const event = Object.fromEntries(form_data);
   event.end = dayjs(event.end).add(1, "day").format("YYYY-MM-DD");
 
-  /*
   if (role == "admin") {
     event.title = event.username;
     delete event.username;
   } else {
     event.title = username;
   }
-  */
-  event.title = username;
 
   console.log("save_event (from modal form): " + JSON.stringify(event));
 
@@ -217,7 +208,7 @@ function delete_event(e) {
   console.log("delete_event(): " + JSON.stringify(event));
 
   $.ajax({
-    url: "/api/events/" + event.id,
+    url: "/api/events/" + encodeURIComponent(event.id),
     // dataType: 'json',
     type: "delete",
     success: function () {
