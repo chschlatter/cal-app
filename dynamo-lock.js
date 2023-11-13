@@ -5,35 +5,31 @@ const setTimeout = require("timers/promises").setTimeout;
 const dayjs = require("dayjs");
 const { PutCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 
-exports.dynamoLock = async function (
-  dynamodbDocumentClient,
-  tableName,
-  resource
-) {
-  const lockId = "lock-" + resource;
+exports.dynamoLock = async function (dynamodbDocumentClient, resource) {
   const lock = {
-    PK: lockId,
-    SK: lockId,
+    resource: resource,
     Expiry: dayjs().add(30, "seconds").toISOString(),
-    Type: "Lock",
   };
 
   let unlock = false;
   while (!unlock) {
     try {
       const params = {
-        TableName: tableName,
+        TableName: "cal_locks",
         Item: lock,
-        ConditionExpression: "attribute_not_exists(PK) OR Expiry < :now",
+        ConditionExpression: "attribute_not_exists(#resource) OR Expiry < :now",
         ExpressionAttributeValues: {
           ":now": dayjs().toISOString(),
+        },
+        ExpressionAttributeNames: {
+          "#resource": "resource",
         },
       };
 
       await dynamodbDocumentClient.send(new PutCommand(params));
       console.log("Lock acquired");
       unlock = async () => {
-        await dynamoUnlock(dynamodbDocumentClient, tableName, resource);
+        await dynamoUnlock(dynamodbDocumentClient, resource);
       };
     } catch (err) {
       if (err.name === "ConditionalCheckFailedException") {
@@ -47,13 +43,11 @@ exports.dynamoLock = async function (
   return unlock;
 };
 
-async function dynamoUnlock(dynamodbDocumentClient, tableName, pk) {
-  const lockId = "lock-" + pk;
+async function dynamoUnlock(dynamodbDocumentClient, resource) {
   const params = {
-    TableName: tableName,
+    TableName: "cal_locks",
     Key: {
-      PK: lockId,
-      SK: lockId,
+      resource: resource,
     },
   };
 

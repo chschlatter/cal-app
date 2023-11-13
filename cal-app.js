@@ -44,6 +44,7 @@ app.get("/login", (req, res) => {
 app.get("/api/events", validator.validate("listEvents"), event.list);
 app.post("/api/events", validator.validate("createEvent"), event.create);
 app.delete("/api/events/:id", validator.validate("deleteEvent"), event.delete);
+app.put("/api/events/:id", validator.validate("updateEvent"), event.update);
 app.post("/api/users/login", validator.validate("userLogin"), user.login);
 app.get("/api/users", auth.needsRole("admin"), user.list);
 app.post(

@@ -1,5 +1,6 @@
 var calendar;
 var username, role;
+var apiUrl = "https://gw7zp9si00.execute-api.eu-central-2.amazonaws.com/Prod";
 
 $(document).ready(() => {
   $.ajax({
@@ -33,7 +34,12 @@ $(document).ready(() => {
   calendar = new FullCalendar.Calendar(calendarEl, {
     themeSystem: "bootstrap5",
     initialView: "dayGridYear",
-    events: "/api/events",
+    // events: "/api/events",
+    events: {
+      url: apiUrl + "/events",
+      method: "get",
+      dataType: "json",
+    },
     selectable: true,
     select: cal_on_select,
     eventClick: cal_on_eventClick,
@@ -96,11 +102,11 @@ function modal_on_ajax_error(xhr) {
     const response = JSON.parse(xhr.responseText);
     console.log("modal_on_ajax_error: " + xhr.responseText);
 
-    if (response.code == "event-010") {
-      if (response.data.overlap_start) {
+    if (xhr.status == 409) {
+      if (response.overlap_start) {
         $("#input-start-date").addClass("is-invalid");
       }
-      if (response.data.overlap_end) {
+      if (response.overlap_end) {
         $("#input-end-date").addClass("is-invalid");
       }
     }
@@ -156,11 +162,11 @@ function save_event(e) {
   $(":button").attr("disabled", true);
   $("#submit-btn").html("Saving ...");
 
-  if (event.id > 0) {
+  if (event.id) {
     // update existing event
 
     $.ajax({
-      url: "/api/events/" + event.id,
+      url: apiUrl + "/events/" + encodeURIComponent(event.id),
       contentType: "application/json; charset=utf-8",
       dataType: "json",
       type: "put",
@@ -180,9 +186,9 @@ function save_event(e) {
     });
   } else {
     // create new event
-
+    delete event.id;
     $.ajax({
-      url: "/api/events",
+      url: apiUrl + "/events",
       data: JSON.stringify(event),
       contentType: "application/json; charset=utf-8",
       dataType: "json",
@@ -208,7 +214,7 @@ function delete_event(e) {
   console.log("delete_event(): " + JSON.stringify(event));
 
   $.ajax({
-    url: "/api/events/" + encodeURIComponent(event.id),
+    url: apiUrl + "/events/" + encodeURIComponent(event.id),
     // dataType: 'json',
     type: "delete",
     success: function () {

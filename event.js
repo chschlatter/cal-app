@@ -21,49 +21,21 @@ exports.list = async function (req, res) {
 
 exports.create = async function (req, res) {
   console.log("create: " + JSON.stringify(req.body));
-
   const event = matchedData(req);
-  if (req.user.role == "admin") {
-    try {
-      await users.get(event.title, global.docClient);
-    } catch (err) {
-      throw new ApiError(
-        global.httpStatus.BAD_REQUEST,
-        "event-012",
-        "Event title is not a known user"
-      );
-    }
-  }
+  await events.create(event, req.user, global.docClient);
+  res.send(event);
+};
 
-  // authorization
-  if (req.user.role === "user" && event.title !== req.user.name) {
-    throw new ApiError(
-      global.httpStatus.FORBIDDEN,
-      "api-020",
-      "Not authorized"
-    );
-  }
-
-  await events.create(event, global.docClient);
+exports.update = async function (req, res) {
+  console.log("update: " + JSON.stringify(req.body));
+  const event = matchedData(req);
+  await events.update(event, req.user, global.docClient);
   res.send(event);
 };
 
 exports.delete = async function (req, res) {
   console.log("delete: " + JSON.stringify(req.params));
-
   const event = matchedData(req);
-  // throws ApiError if event does not exist
-  const eventFromDB = await events.get(event.id, global.docClient);
-
-  // Users can only delete their own events
-  if (req.user.role == "user" && eventFromDB.title !== req.user.name) {
-    throw new ApiError(
-      global.httpStatus.FORBIDDEN,
-      "api-020",
-      "Not authorized"
-    );
-  }
-
-  await events.remove(event.id, global.docClient);
+  await events.remove(event.id, req.user, global.docClient);
   res.send(event);
 };

@@ -28,6 +28,36 @@ const schemas = {
       errorMessage: "End date is required",
     },
   },
+  updateEvent: {
+    id: {
+      in: ["params"],
+      isString: true,
+      notEmpty: true,
+      escape: true,
+      errorMessage: "Id is required",
+    },
+    title: {
+      in: ["body"],
+      isString: true,
+      notEmpty: true,
+      escape: true,
+      errorMessage: "Title is required",
+    },
+    start: {
+      in: ["body"],
+      isISO8601: {
+        errorMessage: "Wrong date format",
+      },
+      errorMessage: "Start date is required",
+    },
+    end: {
+      in: ["body"],
+      isISO8601: {
+        errorMessage: "Wrong date format",
+      },
+      errorMessage: "End date is required",
+    },
+  },
   listEvents: {
     start: {
       in: ["query"],
